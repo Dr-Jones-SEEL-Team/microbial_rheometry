@@ -22,7 +22,6 @@ class Sweep:
         Sweep.tan_delta = [] 
         Sweep.tan_delta = np.divide(Sweep.lossmodulus, Sweep.storagemodulus)
 
-
 def read_files_in_folder(folder_path):
     """Reads all files in the specified folder."""
     Experiment = [Sweep() for i in range(200)]
@@ -63,42 +62,53 @@ def read_files_in_folder(folder_path):
                         Experiment[i].substrate = "Epiderm"
                     content = pd.read_csv(file_path, delimiter='\t', header=[4], encoding=filetype)
                     content = content.drop([0, 1])
-                    Experiment[i].storagemodulus[0:30] = content['Storage Modulus']
-                    Experiment[i].lossmodulus[0:30] = content['Loss Modulus'].astype(float)
-                    Experiment[i].shearstrain = content['Shear Strain'] 
+                    L = len(content["Loss Modulus"])
+                    Experiment[i].storagemodulus[0:L] = content['Storage Modulus'].astype(float)
+                    Experiment[i].lossmodulus[0:L] = content['Loss Modulus'].astype(float)
+                    Experiment[i].shearstrain[0:L] = content['Shear Strain'].astype(float) 
         i = i+1
         count = count + 1
     Experiment=Experiment[:count]   
     return Experiment
-
 
 if __name__ == "__main__":
     folder_path = r"/Users/aj343/Downloads/Biofilm_Rheometry"
       # Replace with your folder path
 Experiment = read_files_in_folder(r"/Users/aj343/Downloads/Biofilm_Rheometry")  
 
+L = len(Experiment)
+for i in range(L):
+    L = Experiment[i].lossmodulus
+    S = Experiment[i].storagemodulus
+    Experiment[i].tan_delta = np.divide(L, S)
 
-# L = len(Experiment)
-# print(L)
-# for i in range(L):
-    # L = Experiment[i].lossmodulus
-    # S = Experiment[i].storagemodulus
-    # print(L)
-    # print(S)
-    # print(i)
-    # Experiment[i].tan_delta = np.divide(L, S)
-    # print(Experiment[i].tan_delta)
-Experiment.tan_delta = np.divide(Experiment.lossmodulus, Experiment.storagemodulus)
-# print(Experiment[1].lossmodulus)
 
-# for i in range(100):
-#     Experiment[i].tan_delta = np.divide(Experiment[i].lossmodulus, Experiment[i].storagemodulus)    
-#     print(i)
-#     print(Experiment[i].tan_delta)
-
-# Plot data with confidence Intervals
-# Confirm number of replcates for each time, substrate, speices
 # Compute means, standard deviations, and standard errors
+
+def analyze_data(Exper,substrate,species,time):
+    """Confirms number of replcates for each time, substrate, speices and computes means, standard deviations, and standard errors."""
+    Experiment_analyzed = [Sweep() for i in range(L)]
+    L = len(Exper)
+    temp = [Sweep() for i in range(L)]
+    i = 0
+    j = 0
+
+    for i in range(L):
+        if Exper[i].species == species and Exper[i].substrate == substrate and Exper[i].time == time:
+            temp[j] = Exper[i]
+            j = j+1
+    Experiment_analyzed[0].storagemodulus = np.mean(temp.storagemodulus)
+    Experiment_analyzed[0].lossmodulus = np.mean(temp.lossmodulus)
+    Experiment_analyzed[0].tan_delta = np.mean(temp.tan_delta)
+    Experiment_analyzed[0].storagemodulus_std = np.std(temp.storagemodulus)
+    Experiment_analyzed[0].lossmodulus_std = np.std(temp.lossmodulus)
+    Experiment_analyzed[0].tan_delta_std = np.std(temp.tan_delta)
+    Experiment_analyzed[0].storagemodulus_sem = stats.sem(temp.storagemodulus)
+    Experiment_analyzed[0].lossmodulus_sem = stats.sem(temp.lossmodulus)
+    Experiment_analyzed[0].tan_delta_sem = stats.sem(temp.tan_delta)
+    return Experiment_analyzed
+
+analyze_data(Experiment)
 
 # StorageModulus.mean = np.mean(StorageModulus)
 # StorageModulus.std = np.std(StorageModulus)
@@ -110,6 +120,7 @@ Experiment.tan_delta = np.divide(Experiment.lossmodulus, Experiment.storagemodul
 # LossModulus.sem = stats.sem(LossModulus)
 # TanDelta.sem = stats.sem(TanDelta)
 
+# Plot data with confidence Intervals
 # # Generate sample data
 # ShearStrain = np.linspace(0, 10, 100)
 # StorageModulus.x = 2 * ShearStrain + np.random.normal(0, 1, 100)
@@ -119,10 +130,11 @@ Experiment.tan_delta = np.divide(Experiment.lossmodulus, Experiment.storagemodul
 # ci = stats.t.interval(0.95, len(ShearStrain) - 1, loc=StorageModulus.mean, scale=stats.sem(StorageModulus.x))
 
 # Plot data and confidence intervals
-# plt.plot(Experiment[1].shearstrain, Experiment[1].tan_delta, 'o')
+plt.plot(Experiment[1].shearstrain, Experiment[1].storagemodulus, 'o')
+plt.xscale('log')
 # print(Experiment[1].shearstrain)
 # print(Experiment[1].tan_delta)
 
 # plt.plot(ShearStrain, 2 * ShearStrain, '-')
 # plt.fill_between(ShearStrain, (2 * ShearStrain) - ci[1], (2 * ShearStrain) + ci[1], alpha=0.3)
-# plt.show()
+plt.show()
