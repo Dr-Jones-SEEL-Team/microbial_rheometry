@@ -11,16 +11,45 @@ import pandas as pd
 from pylab import show,subplot,figure
 
 class Sweep:
-     def __init__(Sweep):
-        Sweep.species = ""
-        Sweep.substrate = ""
-        Sweep.time = ""
-        Sweep.temperature = []
-        Sweep.shearstrain = []
-        Sweep.storagemodulus = []
-        Sweep.lossmodulus = []
-        Sweep.tan_delta = [] 
-        Sweep.tan_delta = np.divide(Sweep.lossmodulus, Sweep.storagemodulus)
+    def __init__(self):
+        self.species = ""
+        self.substrate = ""
+        self.time = ""
+        self.temperature = []
+        self.shearstrain = []
+        self.storagemodulus = []
+        self.lossmodulus = []
+        self.tan_delta = [] 
+        self.attribute = ""
+    # def __getattribute__(self, name):
+    #     pass
+
+def get_from_filename(filename, key):
+    """Extracts a value from a filename."""
+    mappings = {
+        "species": {
+            "Sepi": "S. epidermidis",
+            "Saureu" or "Saureus": "S. aureus",
+        },
+        "substrate": {
+            "TSA": "TSA",
+            "Epi": "Epiderm"
+        },
+        "time": {
+            "24h": 24,
+            "48h": 48,
+            "72h": 72
+        }
+    }
+
+    if key in mappings:
+        mapping = mappings[key]
+        for key_part, value in mapping.items():
+            if key_part in filename:
+                return value
+
+    # Return None if the key is not found
+    return None
 
 def read_files_in_folder(folder_path):
     """Reads all files in the specified folder."""
@@ -36,105 +65,78 @@ def read_files_in_folder(folder_path):
             with open(file_path, 'r', encoding=filetype) as file:
                  lines = file.readlines()
                  if len(lines) > 4:
-                    if filename.__contains__("Sepi"):
-                        Experiment[i].species = "S. epidemidis"
-                    elif filename.__contains__("Saureu") or filename.__contains__("Saureus"):
-                        Experiment[i].species = "S. aureus"
-                    # elif filename.__contains__("Ecoli")
-                        # Experiment[i].species = "Ecoli"
-                    # elif filename.__contains__("Strep")
-                        # Experiment[i].species = "Strep"
-                    # elif filename.__contains__("Bsub")
-                        # Experiment[i].species = "Bsub"
-                    # elif filename.__contains__("Bcer")
-                        # Experiment[i].species = "Bcer"
-                    # elif filename.__contains__("Bthe")
-                        # Experiment[i].species = "Bthe
-                    if filename.__contains__("24h"):
-                        Experiment[i].time = 24
-                    elif filename.__contains__("48h"):
-                        Experiment[i].time = 48
-                    elif filename.__contains__("72h"):
-                        Experiment[i].time = 72 
-                    if filename.__contains__("TSA"):
-                        Experiment[i].substrate = "TSA"
-                    elif filename.__contains__("Epi"):
-                        Experiment[i].substrate = "Epiderm"
+                    Experiment[i].species = get_from_filename(filename, "species")
+                    Experiment[i].substrate = get_from_filename(filename, "substrate")
+                    Experiment[i].time = get_from_filename(filename, "time")
                     content = pd.read_csv(file_path, delimiter='\t', header=[4], encoding=filetype)
                     content = content.drop([0, 1])
                     L = len(content["Loss Modulus"])
                     Experiment[i].storagemodulus[0:L] = content['Storage Modulus'].astype(float)
                     Experiment[i].lossmodulus[0:L] = content['Loss Modulus'].astype(float)
                     Experiment[i].shearstrain[0:L] = content['Shear Strain'].astype(float) 
+                    Experiment[i].tan_delta[0:L] = np.divide(Experiment[i].lossmodulus, Experiment[i].storagemodulus)
         i = i+1
         count = count + 1
     Experiment=Experiment[:count]   
     return Experiment
 
-if __name__ == "__main__":
-    folder_path = r"/Users/aj343/Downloads/Biofilm_Rheometry"
-      # Replace with your folder path
-Experiment = read_files_in_folder(r"/Users/aj343/Downloads/Biofilm_Rheometry")  
-
-L = len(Experiment)
-for i in range(L):
-    L = Experiment[i].lossmodulus
-    S = Experiment[i].storagemodulus
-    Experiment[i].tan_delta = np.divide(L, S)
-
+def matches_criteria(Exper,substrate,species,time):
+    """Checks if the experiment matches the specified criteria."""
+    return Exper.species == species and Exper.substrate == substrate and Exper.time == time
 
 # Compute means, standard deviations, and standard errors
-
 def analyze_data(Exper,substrate,species,time):
     """Confirms number of replcates for each time, substrate, speices and computes means, standard deviations, and standard errors."""
-    Experiment_analyzed = [Sweep() for i in range(L)]
-    L = len(Exper)
-    temp = [Sweep() for i in range(L)]
-    i = 0
-    j = 0
+    temp = [exper for exper in Exper if matches_criteria(exper, substrate, species, time)]
+    L = len(temp)
+    analysis = {}
+    mean = np.mean([temp.storagemodulus for temp in temp],axis=0)
+    std = np.std([temp.storagemodulus for temp in temp],axis=0)
+    sem = stats.sem([temp.storagemodulus for temp in temp],axis=0)
+    analysis["StorageModulus"] = {"mean": mean, "std": std, "sem": sem} 
+    mean = np.mean([temp.lossmodulus for temp in temp],axis=0)
+    std = np.std([temp.lossmodulus for temp in temp],axis=0)
+    sem = stats.sem([temp.lossmodulus for temp in temp],axis=0)
+    analysis["LossModulus"] = {"mean": mean, "std": std, "sem": sem}
+    mean = np.mean([temp.tan_delta for temp in temp],axis=0)
+    std = np.std([temp.tan_delta for temp in temp],axis=0)
+    sem = stats.sem([temp.tan_delta for temp in temp],axis=0)
+    analysis["TanDelta"] = {"mean": mean, "std": std, "sem": sem}
+    mean = np.mean([temp.shearstrain for temp in temp],axis=0)
+    std = np.std([temp.shearstrain for temp in temp],axis=0)
+    sem = stats.sem([temp.shearstrain for temp in temp],axis=0)
+    analysis["ShearStrain"] = {"mean": mean, "std": std, "sem": sem}
+    return analysis
 
-    for i in range(L):
-        if Exper[i].species == species and Exper[i].substrate == substrate and Exper[i].time == time:
-            temp[j] = Exper[i]
-            j = j+1
-    Experiment_analyzed[0].storagemodulus = np.mean(temp.storagemodulus)
-    Experiment_analyzed[0].lossmodulus = np.mean(temp.lossmodulus)
-    Experiment_analyzed[0].tan_delta = np.mean(temp.tan_delta)
-    Experiment_analyzed[0].storagemodulus_std = np.std(temp.storagemodulus)
-    Experiment_analyzed[0].lossmodulus_std = np.std(temp.lossmodulus)
-    Experiment_analyzed[0].tan_delta_std = np.std(temp.tan_delta)
-    Experiment_analyzed[0].storagemodulus_sem = stats.sem(temp.storagemodulus)
-    Experiment_analyzed[0].lossmodulus_sem = stats.sem(temp.lossmodulus)
-    Experiment_analyzed[0].tan_delta_sem = stats.sem(temp.tan_delta)
-    return Experiment_analyzed
+def plot_data(Exper):
+    """Plots the data for the specified criteria."""
+    # # Calculate confidence intervals
+    ci = stats.t.interval(0.95, len(Exper["ShearStrain"]["mean"]) - 1, loc=Exper["StorageModulus"]["mean"], scale=Exper["StorageModulus"]["sem"])  
+    ci_s = stats.t.interval(0.95, len(Exper["ShearStrain"]["mean"]) - 1, loc=Exper["LossModulus"]["mean"], scale=Exper["LossModulus"]["sem"])  
+    # Plot data and confidence intervals
+    plt.plot(Exper["ShearStrain"]["mean"], Exper["StorageModulus"]["mean"], 'o',label='Storage Modulus')
+    plt.plot(Exper["ShearStrain"]["mean"], Exper["LossModulus"]["mean"], '+',label='Loss Modulus')
 
-analyze_data(Experiment)
+    plt.fill_between(Exper["ShearStrain"]["mean"], ((Exper["StorageModulus"]["mean"]) - ci[1]), ((Exper["StorageModulus"]["mean"]) + ci[1]), alpha=0.3)
+    plt.fill_between(Exper["ShearStrain"]["mean"], ((Exper["LossModulus"]["mean"]) - ci_s[1]), ((Exper["LossModulus"]["mean"]) + ci_s[1]), alpha=0.3)
+    plt.xscale('log')
+    plt.legend()
+    plt.xlabel('Log Shear Strain')
+    plt.ylabel('Shear Modulus [Pa]')
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+    return plt
+    
+if __name__ == "__main__":
+    folder_path = r"/Users/aj343/Downloads/Biofilm_Rheometry"
+    Experiment = read_files_in_folder(folder_path)  
+    plotalldata = [0,0,0,0]
+    for i in range (1,3,1):
+            Exp_analyzed = analyze_data(Experiment,"TSA","S. epidermidis",24*i)
+            plotalldata[i] = plot_data(Exp_analyzed)
+    plotalldata[1].show()
+    plotalldata[2].show()
+    plotalldata[3].show()
 
-# StorageModulus.mean = np.mean(StorageModulus)
-# StorageModulus.std = np.std(StorageModulus)
-# LossModulus.mean = np.mean(LossModulus)
-# LossModulus.std = np.std(LossModulus)
-# TanDelta.mean = np.mean(TanDelta)
-# TanDelta.std = np.std(TanDelta)
-# StorageModulus.sem = stats.sem(StorageModulus)
-# LossModulus.sem = stats.sem(LossModulus)
-# TanDelta.sem = stats.sem(TanDelta)
 
-# Plot data with confidence Intervals
-# # Generate sample data
-# ShearStrain = np.linspace(0, 10, 100)
-# StorageModulus.x = 2 * ShearStrain + np.random.normal(0, 1, 100)
-# StorageModulus.mean = np.mean(StorageModulus.x)
-# StorageModulus.sem = stats.sem(StorageModulus.x)
-# # Calculate confidence intervals
-# ci = stats.t.interval(0.95, len(ShearStrain) - 1, loc=StorageModulus.mean, scale=stats.sem(StorageModulus.x))
 
-# Plot data and confidence intervals
-plt.plot(Experiment[1].shearstrain, Experiment[1].storagemodulus, 'o')
-plt.xscale('log')
-# print(Experiment[1].shearstrain)
-# print(Experiment[1].tan_delta)
 
-# plt.plot(ShearStrain, 2 * ShearStrain, '-')
-# plt.fill_between(ShearStrain, (2 * ShearStrain) - ci[1], (2 * ShearStrain) + ci[1], alpha=0.3)
-plt.show()
