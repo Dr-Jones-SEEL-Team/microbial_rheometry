@@ -11,6 +11,9 @@ import pandas as pd
 from pylab import show,subplot,figure
 
 class Sweep:
+    ## Class to store the data from the files.
+    ## The class has the following attributes: biological species and substrate, time of the experiment, temperature, shear strain, storage modulus, loss modulus, tan delta, and an additional attribute for replicates, means and standard error.
+
     def __init__(self):
         self.species = ""
         self.substrate = ""
@@ -25,7 +28,7 @@ class Sweep:
     #     pass
 
 def get_from_filename(filename, key):
-    """Extracts a value from a filename."""
+    """Extracts values from filename including bacteria species, substrate, time."""
     mappings = {
         "species": {
             "Sepi": "S. epidermidis",
@@ -53,6 +56,7 @@ def get_from_filename(filename, key):
 
 def read_files_in_folder(folder_path):
     """Reads all files in the specified folder."""
+    ## The function reads all files in the specified folder and stores the data in a list of Sweep objects.
     Experiment = [Sweep() for i in range(200)]
     i = 0
     count = 0
@@ -108,34 +112,55 @@ def analyze_data(Exper,substrate,species,time):
     analysis["ShearStrain"] = {"mean": mean, "std": std, "sem": sem}
     return analysis
 
-def plot_data(Exper):
+def plot_data(Exper,time):
     """Plots the data for the specified criteria."""
     # # Calculate confidence intervals
     ci = stats.t.interval(0.95, len(Exper["ShearStrain"]["mean"]) - 1, loc=Exper["StorageModulus"]["mean"], scale=Exper["StorageModulus"]["sem"])  
     ci_s = stats.t.interval(0.95, len(Exper["ShearStrain"]["mean"]) - 1, loc=Exper["LossModulus"]["mean"], scale=Exper["LossModulus"]["sem"])  
     # Plot data and confidence intervals
-    plt.plot(Exper["ShearStrain"]["mean"], Exper["StorageModulus"]["mean"], 'o',label='Storage Modulus')
-    plt.plot(Exper["ShearStrain"]["mean"], Exper["LossModulus"]["mean"], '+',label='Loss Modulus')
+    plt.plot(Exper["ShearStrain"]["mean"], Exper["StorageModulus"]["mean"], 'o',label='Storage Modulus '+str(time)+'h')
+    plt.plot(Exper["ShearStrain"]["mean"], Exper["LossModulus"]["mean"], '+',label='Loss Modulus '+str(time)+'h')    
 
     plt.fill_between(Exper["ShearStrain"]["mean"], ((Exper["StorageModulus"]["mean"]) - ci[1]), ((Exper["StorageModulus"]["mean"]) + ci[1]), alpha=0.3)
     plt.fill_between(Exper["ShearStrain"]["mean"], ((Exper["LossModulus"]["mean"]) - ci_s[1]), ((Exper["LossModulus"]["mean"]) + ci_s[1]), alpha=0.3)
     plt.xscale('log')
+    plt.yscale('log')
     plt.legend()
     plt.xlabel('Log Shear Strain')
     plt.ylabel('Shear Modulus [Pa]')
-    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     return plt
     
+def linearviscoelasticity(Exper):
+    """Calculates the linear viscoelasticity of the data."""
+    ##Uses a running average of tan\delta to determine the linear viscoelastic region of the data.
+    tand = Exper["TanDelta"]["mean"]   
+    tandbar = tand[0]+tand[1]+tand[2]+tand[3]+tand[4]+tand[5]
+    for i in range(5,len(tand)-1):
+        if np.abs(tand[i+1]*(i+1) - tandbar)/tandbar<0.03:
+            break
+        else:
+            tandbar = tandbar + tand[i+1]
+            continue
+
+    return i    
+
 if __name__ == "__main__":
     folder_path = r"/Users/aj343/Downloads/Biofilm_Rheometry"
     Experiment = read_files_in_folder(folder_path)  
     plotalldata = [0,0,0,0]
-    for i in range (1,3,1):
-            Exp_analyzed = analyze_data(Experiment,"TSA","S. epidermidis",24*i)
-            plotalldata[i] = plot_data(Exp_analyzed)
+    for i in range (1,4,1):
+            Exp_analyzed = analyze_data(Experiment,"TSA","S. aureus",24*i)
+            plotalldata[i] = plot_data(Exp_analyzed,24*i)
+            lver_index = (linearviscoelasticity(Exp_analyzed))
+            # plt.loglog(Exp_analyzed["ShearStrain"]["mean"][lver_index], Exp_analyzed["StorageModulus"]["mean"][lver_index], 'X')
+    
+    plt.title('Shear Modulus of '+'S. aureus'+' on '+'TSA')
+    # plt.show()
     plotalldata[1].show()
     plotalldata[2].show()
     plotalldata[3].show()
+    
+    
 
 
 
