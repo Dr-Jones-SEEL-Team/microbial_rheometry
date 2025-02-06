@@ -33,10 +33,11 @@ def get_from_filename(filename, key):
         "species": {
             "Sepi": "S. epidermidis",
             "Saureu" or "Saureus": "S. aureus",
+            "control" or "Control": "Control"
         },
         "substrate": {
             "TSA": "TSA",
-            "Epi": "Epiderm"
+            "Epi" or "Epi200": "Epiderm"
         },
         "time": {
             "24h": 24,
@@ -70,6 +71,8 @@ def read_files_in_folder(folder_path):
                  lines = file.readlines()
                  if len(lines) > 4:
                     Experiment[i].species = get_from_filename(filename, "species")
+                    if Experiment[i].species == None:
+                        Experiment[i].species = "Control"
                     Experiment[i].substrate = get_from_filename(filename, "substrate")
                     Experiment[i].time = get_from_filename(filename, "time")
                     content = pd.read_csv(file_path, delimiter='\t', header=[4], encoding=filetype)
@@ -125,7 +128,8 @@ def plot_data(Exper,time):
     plt.fill_between(Exper["ShearStrain"]["mean"], ((Exper["LossModulus"]["mean"]) - ci_s[1]), ((Exper["LossModulus"]["mean"]) + ci_s[1]), alpha=0.3)
     plt.xscale('log')
     plt.yscale('log')
-    plt.legend()
+    plt.legend(loc='upper right',bbox_to_anchor=(1, 1),fontsize='small')
+    # plt.tight_layout()
     plt.xlabel('Log Shear Strain')
     plt.ylabel('Shear Modulus [Pa]')
     return plt
@@ -146,19 +150,25 @@ def linearviscoelasticity(Exper):
 
 if __name__ == "__main__":
     folder_path = r"/Users/aj343/Downloads/Biofilm_Rheometry"
-    Experiment = read_files_in_folder(folder_path)  
+    Experiment = read_files_in_folder(folder_path)
+    # temp = [Experiment for Experiment in Experiment if matches_criteria(Experiment, "Epiderm", "Control", 24)]
+    # print([temp.storagemodulus for temp in temp])
+    # # for i in range(len(Experiment)):
+    # #     print(Experiment[i].species)
+    # #     print(Experiment[i].substrate)
     plotalldata = [0,0,0,0]
-    for i in range (1,4,1):
-            Exp_analyzed = analyze_data(Experiment,"TSA","S. aureus",24*i)
+    for i in range (1,2,1):
+            Exp_analyzed = analyze_data(Experiment,"Epiderm","Control",24*i)
             plotalldata[i] = plot_data(Exp_analyzed,24*i)
             lver_index = (linearviscoelasticity(Exp_analyzed))
             # plt.loglog(Exp_analyzed["ShearStrain"]["mean"][lver_index], Exp_analyzed["StorageModulus"]["mean"][lver_index], 'X')
     
-    plt.title('Shear Modulus of '+'S. aureus'+' on '+'TSA')
+    # plt.title('Shear Modulus of '+'S. epidermidis'+' on '+'Epiderm')
+    plt.title('Shear Modulus of '+'Epiderm'+' Control')
     # plt.show()
     plotalldata[1].show()
-    plotalldata[2].show()
-    plotalldata[3].show()
+    # plotalldata[2].show()
+    # plotalldata[3].show()
     
     
 
